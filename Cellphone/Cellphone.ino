@@ -204,6 +204,30 @@ const long scrollSpeed = 200;
 
 boolean unlocking, blank, scrolling, terminateScreen;
 
+const char *loadingStr="-\\|/";
+const unsigned long loadingAdvance = 100;
+unsigned long loadingTime = 0;
+unsigned int loadingi = 0;
+unsigned int loadingPos = 7;
+void loading() {
+  unsigned long m = millis();
+  if (m > loadingTime) {
+    loadingTime = m+loadingAdvance;
+    if (loadingi > 3) loadingi = 0;
+    screen.setCursor(loadingPos);
+    screen.print(loadingStr[loadingi++]);
+    screen.display();
+  }
+}
+
+void loadingDelay(unsigned long d,unsigned int p) {
+  loadingPos = p;
+  d += millis();
+  while(millis() < d) {
+    loading();
+  }
+}
+
 void setup() {
   Serial.begin(9600);
 
@@ -218,9 +242,10 @@ void setup() {
   screen.clear();
   screen.setCursor(0);
   
-  delay(2000);
+  loadingDelay(2000,0);
   
-  screen.print("connect");
+  screen.setCursor(0);
+  screen.print(" reset");
   screen.display();
   
   delay(2000);
@@ -230,14 +255,18 @@ void setup() {
   // (and not connected to anything except the ISP header)
   pinMode(19, OUTPUT);
   digitalWrite(19, LOW);
-  delay(12000);
+  loadingDelay(12000,0);
   digitalWrite(19, HIGH);
-  
+
+  screen.setCursor(0);
+  screen.print(" connect");
+  screen.display();  
+
   while (gsmAccess.begin(0, false) != GSM_READY) {
-    delay(1000);
+    loadingDelay(1000,0);
   }
   screen.setCursor(0);
-  screen.print("connected.");
+  screen.print("connected.");  //flashes too quickly to be seen
   screen.display();
   
   vcs.hangCall();
@@ -245,13 +274,13 @@ void setup() {
   delay(300);
   
   screen.setCursor(0);
-  screen.print("caching.");
+  screen.print(" caching");
   screen.display();
   
   cachePhoneBook();
   
   screen.setCursor(0);
-  screen.print("done.");
+  screen.print("done.   ");
   screen.display();
 }
 
