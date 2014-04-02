@@ -1094,7 +1094,8 @@ void numberInput(char key, char *buf, int len)
     lastKeyPressTime = millis();
   }
   if (key == '*') {
-    if (i > 0) { buf[i - 1] = 0; }
+	if (i == 0) mode = HOME;
+    else if (i > 0) { buf[i - 1] = 0; }
     lastKeyPressTime = millis();
   }
   if (key == '#') {
