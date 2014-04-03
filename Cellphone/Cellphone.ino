@@ -466,7 +466,7 @@ void loop() {
           if (key == 'L') { mode = HOME; unlocking = false; }
           if (key == 'U') { brightness += 1; } 
           if (key == 'D') { brightness -= 1; }
-          if (key == 'U' || key == 'D') { brightness = constrain(brightness, 0, 15); screen.setBrightness(brightness); lastKeyPressTime = millis(); }
+	      if (key == 'U' || key == 'D') { brightness = constrain(brightness, 0, 15); screen.setBrightness(brightness); lastKeyPressTime = millis(); screen.setCursor(2); screen.write(128 + (constrain(brightness - 1,0,15) / 2)); screen.display(); delay(100); }
           if (millis() - lastKeyPressTime > 4000) unlocking = false;
           blank = false;
         } else {
