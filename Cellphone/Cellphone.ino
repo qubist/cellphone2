@@ -94,7 +94,7 @@ DateTime missedDateTime;
 
 GSM3_voiceCall_st prevVoiceCallStatus;
 
-enum Mode { NOMODE, TEXTALERT, MISSEDCALLALERT, ALARMALERT, LOCKED, HOME, DIAL, PHONEBOOK, EDITENTRY, EDITTEXT, MENU, MISSEDCALLS, RECEIVEDCALLS, DIALEDCALLS, TEXTS, SETTIME, SETALARM, SETSILENT };
+enum Mode { NOMODE, TEXTALERT, MISSEDCALLALERT, ALARMALERT, LOCKED, HOME, DIAL, PHONEBOOK, EDITENTRY, EDITTEXT, MENU, MISSEDCALLS, RECEIVEDCALLS, DIALEDCALLS, TEXTS, SETTIME, SETALARM, SETSILENT, RECENTTEXTS, SAVEDTEXTS };
 Mode mode = LOCKED, prevmode, backmode = mode, interruptedmode = mode, alarminterruptedmode = mode;
 boolean initmode, back, fromalert;
 
@@ -109,6 +109,7 @@ menuentry_t mainmenu[] = {
   { "Missed calls", MISSEDCALLS, 0 },
   { "Received calls", RECEIVEDCALLS, 0 },
   { "Dialed calls", DIALEDCALLS, 0 },
+  { "Texts", TEXTS, 0 },
   { "Set date+time", SETTIME, 0 },
   { "Set alarm", SETALARM, 0 },
 };
@@ -125,6 +126,11 @@ menuentry_t callLogEntryMenu[] = {
   { "Call", MISSEDCALLS, callPhoneBookEntry },
   { "Save number", EDITENTRY, initEditEntryFromCallLogEntry },
   { "Delete", MISSEDCALLS, deleteCallLogEntry }
+};
+
+menuentry_t textsmenu[] = {
+  { "Recent texts", RECENTTEXTS, 0 },
+  { "Saved texts", SAVEDTEXTS, 0 },
 };
 
 menuentry_t *menu;
@@ -154,6 +160,16 @@ EntryField entryField;
 
 char text[161];
 int textline;
+
+#define RECENT_TEXTS_BUFFER_SIZE (161*5)
+int recent_i = 0;
+
+char savedtexts[RECENT_TEXTS_BUFFER_SIZE];
+char recenttexts[RECENT_TEXTS_BUFFER_SIZE];
+
+void saveText(char *t) {
+	strcpy(recenttexts,t);
+}
 
 char uppercase[10][10] = { 
   { '.', '?', ',', '\'', '!', '0', 0 },
@@ -404,6 +420,7 @@ void loop() {
           }
           text[i] = 0;
           textline = 0;
+		  saveText(text);
           sms.flush(); // XXX: should save to read message store, not delete
         }
         
@@ -634,9 +651,19 @@ void loop() {
           back = true;
         }
       } else if (mode == TEXTS) {
-        softKeys("back");
-        
+		softKeys("back");
+		
+        setMenu(textsmenu);
+//        if (key == 'L') mode = HOME;
+      } else if (mode == RECENTTEXTS) {
         if (key == 'L') mode = HOME;
+		screen.print(recenttexts);
+		screen.display();
+		  
+      } else if (mode == SAVEDTEXTS) {
+      	if (key == 'L') mode = HOME;
+		screen.print("Saved");
+		screen.display();
       } else if (mode == SETTIME) {
         if (initmode) {
           setTimeValues[0] = clock.getMonth();
