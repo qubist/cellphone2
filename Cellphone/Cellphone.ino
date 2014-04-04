@@ -101,7 +101,7 @@ boolean initmode, back, fromalert;
 struct modeentry_t {
     Mode mode;
     void (*i)();
-    void (*f)();
+    void (*f)(boolean);
 };
 
 const modeentry_t modes[] = {
@@ -122,7 +122,10 @@ const modeentry_t modes[] = {
     {TEXTS,0,textsMode},
     {SETTIME,0,setTimeMode},
     {SETALARM,0,setAlarmMode},
-    {SETSILENT,0,setSilentMode}};
+    {SETSILENT,0,setSilentMode},
+    {RECENTTEXTS,0,recentTextsMode},
+    {SAVEDTEXTS,0,savedTextsMode},
+};
 
 struct menuentry_t {
   char *name;
@@ -130,432 +133,7 @@ struct menuentry_t {
   void (*f)();
 };
 
-void missedCallAlertMode(boolean init) {
-    screen.print(NAME_OR_NUMBER());
-    if (missed > 1) {
-	screen.print(" + ");
-	screen.print(missed - 1);
-    }
-    screen.print(" (");
-    screen.print(missedDateTime);
-    screen.print(")");
-    softKeys("close", "call");
-
-    if (key == 'L') {
-	missed = 0;
-	mode = interruptedmode;
-    }
-    if (key == 'R') {
-	missed = 0;
-	mode = interruptedmode;
-	vcs.voiceCall(number);
-	//while (!vcs.ready());
-    }
-}
-
-void textAlertMode(boolean init) {
-    if (init) {
-	sms.remoteNumber(number, sizeof(number));
-	name[0] = 0;
-	int i = 0;
-	for (; i < sizeof(text) - 1; i++) {
-            int c = sms.read();
-            if (!c) break;
-            text[i] = c;
-	}
-	text[i] = 0;
-	textline = 0;
-	saveText(text);
-	sms.flush(); // XXX: should save to read message store, not delete
-    }
-
-    if (name[0] == 0) phoneNumberToName(number, name, sizeof(name) / sizeof(name[0]));
-
-    screen.print(NAME_OR_NUMBER());
-    screen.print(": ");
-    screen.print(text);
-
-//        for (int i = textline * SCREEN_WIDTH; i < textline * SCREEN_WIDTH + 56; i++) {
-//          if (!text[i]) break;
-//          screen.print(text[i]);
-//        }
-
-    softKeys("close", "reply");
-
-    if (key == 'L') mode = interruptedmode;
-    if (key == 'R') {
-	text[0] = 0;
-	mode = EDITTEXT;
-	fromalert = true;
-    }
-//        if (key == 'U') {
-//          if (textline > 0) textline--;
-//        }
-//        if (key == 'D') {
-//          if (strlen(text) > (textline * SCREEN_WIDTH + 56)) textline++;
-//        }
-}
-
-void alarmAlertMode(boolean init) {
-    if (init) {
-	blank = false;
-	screen.setBrightness(brightness);
-	noteStartTime = 0;
-	ringToneIndex = sizeof(ringTone) / sizeof(ringTone[0]) - 1; // index of last note, so we'll continue to the first one
-    }
-
-    softKeys("okay");
-
-    screen.print("!! ");
-    drawTime();
-
-    if (millis() - noteStartTime > ringToneDurations[ringToneIndex]) {
-	ringToneIndex = (ringToneIndex + 1) % (sizeof(ringTone) / sizeof(ringTone[0]));
-	noteStartTime = millis();
-	if (ringTone[ringToneIndex] == 0) noTone(4);
-	else tone(4, ringTone[ringToneIndex]);
-    }
-
-    if (key == 'R') {
-	alarmSet = false;
-	mode = alarminterruptedmode;
-	back = true;
-    }
-}
-
-void lockedMode(boolean init){
-    if (init) {
-	unlocking = false;
-	blank = false;
-    }
-
-    if (unlocking) {
-	softKeys("Unlock");
-
-	drawSignalStrength();
-	drawDateTime();
-
-	if (key == 'L') { mode = HOME; unlocking = false; }
-	if (key == 'U') { brightness += 1; }
-	if (key == 'D') { brightness -= 1; }
-	if (key == 'U' || key == 'D') { brightness = constrain(brightness, 0, 15); screen.setBrightness(brightness); lastKeyPressTime = millis(); screen.setCursor(2); screen.write(128 + (constrain(brightness - 1,0,15) / 2)); screen.display(); delay(100); }
-	if (millis() - lastKeyPressTime > 4000) unlocking = false;
-	blank = false;
-    } else {
-	if (key) {
-            screen.setBrightness(brightness);
-            unlocking = true;
-            lastKeyPressTime = millis();
-	}
-
-	if (!blank) {
-            screen.setBrightness(0);
-            blank = true;
-	}
-    }
-}
-
-void homeMode(boolean init){
-    softKeys("lock", "menu");
-
-    drawSignalStrength();
-    drawTime();
-
-    if ((key >= '0' && key <= '9') || key == '#') {
-	lastKeyPressTime = millis();
-	number[0] = key; number[1] = 0;
-	mode = DIAL;
-    } else if (key == 'L') {
-	mode = LOCKED;
-    } else if (key == 'R') {
-	setMenu(mainmenu);
-	backmode = HOME;
-    } else if (key == 'D') {
-	mode = PHONEBOOK;
-    }
-}
-
-void dialMode(boolean init){
-    numberInput(key, number, sizeof(number));
-    softKeys("back", "call");
-
-    if (key == 'L') {
-	mode = HOME;
-    } else if (key == 'R') {
-	if (strlen(number) > 0) {
-            mode = HOME; // for after call ends
-            name[0] = 0;
-            vcs.voiceCall(number);
-            while (!vcs.ready());
-	}
-    }
-}
-
-void pbMode(boolean init){
-    if (init) {
-	if (mode == PHONEBOOK) pb.selectPhoneBook(PHONEBOOK_SIM);
-	if (mode == MISSEDCALLS) pb.selectPhoneBook(PHONEBOOK_MISSEDCALLS);
-	if (mode == RECEIVEDCALLS) pb.selectPhoneBook(PHONEBOOK_RECEIVEDCALLS);
-	if (mode == DIALEDCALLS) pb.selectPhoneBook(PHONEBOOK_DIALEDCALLS);
-	while (!pb.ready());
-	delay(300); // otherwise the module gives an error on pb.queryPhoneBook()
-	pb.queryPhoneBook();
-	while (!pb.ready());
-	phoneBookSize = pb.getPhoneBookSize();
-	phoneBookPage = 0;
-	phoneBookLine = 0;
-	phoneBookIndexStart = 1;
-	phoneBookIndexEnd = loadphoneBookNamesForwards(phoneBookIndexStart, NUMPHONEBOOKLINES);
-	lastKeyPressTime = millis();
-    }
-
-    for (int i = 0; i < NUMPHONEBOOKLINES; i++) {
-	if (strlen(phoneBookNames[i]) > 0) {
-            screen.print(phoneBookNames[i]);
-	} else if (strlen(phoneBookNumbers[i]) > 0) {
-            screen.print(phoneBookNumbers[i]);
-	} else if (phoneBookIndices[i] != 0) {
-            screen.print("Unknown");
-	}
-	if (phoneBookHasDateTime[i] && i == phoneBookLine) {
-            screen.print(" ");
-            screen.print(phoneBookDateTimes[i]);
-	}
-    }
-    softKeys("back", "okay");
-
-    if (key == 'L') mode = HOME;
-    else if (key == 'R') {
-	backmode = mode;
-	if (mode == PHONEBOOK) {
-	    setMenu(phoneBookEntryMenu);
-	} else {
-	    setMenu(callLogEntryMenu);
-	}
-    } else if (key == 'D') {
-	if (phoneBookPage * NUMPHONEBOOKLINES + phoneBookLine + 1 < pb.getPhoneBookUsed()) {
-            phoneBookLine++;
-            if (phoneBookLine == NUMPHONEBOOKLINES) {
-		phoneBookPage++;
-		phoneBookIndexStart = phoneBookIndexEnd;
-		phoneBookIndexEnd = loadphoneBookNamesForwards(phoneBookIndexStart, NUMPHONEBOOKLINES);
-		phoneBookLine = 0;
-            }
-            lastKeyPressTime = millis();
-	}
-    } else if (key == 'U') {
-	if (phoneBookLine > 0 || phoneBookPage > 0) {
-            phoneBookLine--;
-            if (phoneBookLine == -1) {
-		phoneBookPage--;
-		phoneBookIndexEnd = phoneBookIndexStart;
-		phoneBookIndexStart = loadphoneBookNamesBackwards(phoneBookIndexEnd, NUMPHONEBOOKLINES);
-		phoneBookLine = NUMPHONEBOOKLINES - 1;
-            }
-            lastKeyPressTime = millis();
-	}
-    }
-}
-
-void editEntryMode(boolean init) {
-    if (init) entryField = NAME;
-
-    if (entryField == NAME) textInput(key, entryName, sizeof(entryName));
-    if (entryField == NUMBER) numberInput(key, entryNumber, sizeof(entryNumber));
-
-    softKeys("cancel", "save");
-
-    if (entryField == NAME) {
-	if (key == 'D') entryField = NUMBER;
-    }
-
-    if (entryField == NUMBER) {
-	if (key == 'U') entryField = NAME;
-    }
-
-    if (key == 'L') {
-	mode = backmode;
-	back = true;
-    }
-    if (key == 'R') {
-	savePhoneBookEntry(entryIndex, entryName, entryNumber);
-	mode = PHONEBOOK;
-    }
-}
-
-void editTextMode(boolean init){
-    textInput(key, text, sizeof(text));
-    softKeys("cancel", "send");
-
-    if (key == 'L') {
-	mode = (fromalert ? HOME : PHONEBOOK);
-	back = true;
-    }
-    if (key == 'R') {
-	sendText(number, text);
-	mode = HOME;
-	back = true;
-    }
-}
-
-void menuMode(boolean init){
-    if (initmode) menuLine = 0;
-
-    screen.print(menu[menuLine].name);
-
-    softKeys("back", "okay");
-
-    if (key == 'U') {
-	if (menuLine > 0) menuLine--;
-    } else if (key == 'D') {
-	if (menuLine < menuLength - 1) menuLine++;
-    } else if (key == 'R') {
-	mode = menu[menuLine].mode;
-	if (menu[menuLine].f) menu[menuLine].f();
-    } else if (key == 'L') {
-	mode = backmode;
-	back = true;
-    }
-}
-
-void textsMode(boolean init) {
-    softKeys("back");
-    setMenu(textsmenu);
-}
-
-void setTimeMode(boolean init) {
-    if (init) {
-	setTimeValues[0] = clock.getMonth();
-	setTimeValues[1] = clock.getDay();
-	setTimeValues[2] = clock.getYear() / 10;
-	setTimeValues[3] = clock.getYear() % 10;
-	setTimeValues[4] = clock.getHour();
-	setTimeValues[5] = clock.getMinute() / 10;
-	setTimeValues[6] = clock.getMinute() % 10;
-	setTimeField = 0;
-    }
-
-    for (int i = (setTimeField < 4 ? 0 : 4); i < (setTimeField < 4 ? 4 : 7); i++) {
-	if (i == setTimeField && millis() % 500 < 250) {
-            screen.print(" ");
-            if (setTimeValues[i] >= 10) screen.print(" ");
-	} else screen.print(setTimeValues[i]);
-	screen.print(setTimeSeparators[i]);
-    }
-
-    if (setTimeField == 6) softKeys("cancel", "set");
-    else softKeys("cancel", "next");
-
-    if (key == 'L') mode = HOME;
-
-    if (key == 'U') {
-	setTimeValues[setTimeField]++;
-	if (setTimeValues[setTimeField] > setTimeMax[setTimeField]) setTimeValues[setTimeField] = setTimeMin[setTimeField];
-    }
-
-    if (key == 'D') {
-	setTimeValues[setTimeField]--;
-	if (setTimeValues[setTimeField] < setTimeMin[setTimeField]) setTimeValues[setTimeField] = setTimeMax[setTimeField];
-    }
-
-    if (key == 'R') {
-	setTimeField++;
-	if (setTimeField == 7) {
-            clock.setTime(setTimeValues[2] * 10 + setTimeValues[3], setTimeValues[0], setTimeValues[1],
-                          setTimeValues[4], setTimeValues[5] * 10 + setTimeValues[6], 0);
-            while (!clock.ready());
-            delay(300);
-            clock.checkTime();
-            while (!clock.ready());
-            lastClockCheckTime = millis();
-            mode = HOME;
-	}
-    }
-}
-
-void setAlarmMode(boolean init){
-    if (init) {
-	setTimeValues[4] = alarmTime.hour;
-	setTimeValues[5] = alarmTime.minute / 10;
-	setTimeValues[6] = alarmTime.minute % 10;
-	alarmSetTemp = alarmSet;
-	setTimeField = -1;
-    }
-
-    if (setTimeField == -1 && millis() % 500 < 250) {
-	screen.print("   ");
-    } else {
-	if (alarmSetTemp) screen.print("ON ");
-	else screen.print("OFF");
-    }
-
-    if (alarmSetTemp) {
-	for (int i = 4; i < 7; i++) {
-            if (i == setTimeField && millis() % 500 < 250) {
-		screen.print(" ");
-		if (setTimeValues[i] >= 10) screen.print(" ");
-            } else screen.print(setTimeValues[i]);
-            screen.print(setTimeSeparators[i]);
-	}
-    }
-
-    if ((setTimeField == -1 && alarmSetTemp == false) || setTimeField == 6) softKeys("cancel", "set");
-    else softKeys("cancel", "next");
-
-    if (key == 'L') mode = HOME;
-
-    if (key == 'U') {
-	if (setTimeField == -1) {
-            alarmSetTemp = !alarmSetTemp;
-	} else {
-            setTimeValues[setTimeField]++;
-            if (setTimeValues[setTimeField] > setTimeMax[setTimeField]) setTimeValues[setTimeField] = setTimeMin[setTimeField];
-	}
-    }
-
-    if (key == 'D') {
-	if (setTimeField == -1) {
-            alarmSetTemp = !alarmSetTemp;
-	} else {
-            setTimeValues[setTimeField]--;
-            if (setTimeValues[setTimeField] < setTimeMin[setTimeField]) setTimeValues[setTimeField] = setTimeMax[setTimeField];
-	}
-    }
-
-    if (key == 'R') {
-	if (setTimeField == -1) {
-            if (alarmSetTemp) setTimeField = 4;
-            else {
-		alarmSet = alarmSetTemp;
-		mode = HOME;
-            }
-	} else {
-            setTimeField++;
-            if (setTimeField == 7) {
-		alarmSet = alarmSetTemp;
-		alarmTime.hour = setTimeValues[4];
-		alarmTime.minute = setTimeValues[5] * 10 + setTimeValues[6];
-		mode = HOME;
-            }
-	}
-    }
-}
-
-void setSilentMode(boolean init) {
-    if (init) ringTemp = ring;
-
-    if (millis() % 500 < 250) {
-	if (ringTemp) screen.print("Audible");
-	else screen.print("Silent");
-    }
-
-    if (key == 'U' || key == 'D') ringTemp = !ringTemp;
-    if (key == 'L') mode = HOME;
-    if (key == 'R') {
-	ring = ringTemp;
-	mode = HOME;
-    }
-}
+char key;
 
 menuentry_t mainmenu[] = {
   { "Ring mode", SETSILENT, 0 },
@@ -752,6 +330,9 @@ void setup() {
   screen.setCursor(0);
   screen.print("done.   ");
   screen.display();
+  
+  recenttexts[0] = 'x';
+  recenttexts[1] = 0;
 }
 
 void modeChecks() {
@@ -824,7 +405,7 @@ void loop() {
 
   if (vcs.getvoiceCallStatus() != RECEIVINGCALL && (vcs.getvoiceCallStatus() != IDLE_CALL || mode != ALARMALERT)) noTone(4);
 
-  char key = keypad.getKey();
+  key = keypad.getKey();
   //screen.clear();
   screen.setCursor(0);
   screen.hideCursor();
@@ -1332,3 +913,446 @@ int readBandGap()
   // combine the two bytes
   return (high << 8) | low;
 }
+
+
+/////  MODES
+
+void missedCallAlertMode(boolean init) {
+    screen.print(NAME_OR_NUMBER());
+    if (missed > 1) {
+	screen.print(" + ");
+	screen.print(missed - 1);
+    }
+    screen.print(" (");
+    screen.print(missedDateTime);
+    screen.print(")");
+    softKeys("close", "call");
+
+    if (key == 'L') {
+	missed = 0;
+	mode = interruptedmode;
+    }
+    if (key == 'R') {
+	missed = 0;
+	mode = interruptedmode;
+	vcs.voiceCall(number);
+	//while (!vcs.ready());
+    }
+}
+
+void textAlertMode(boolean init) {
+    if (init) {
+	sms.remoteNumber(number, sizeof(number));
+	name[0] = 0;
+	int i = 0;
+	for (; i < sizeof(text) - 1; i++) {
+            int c = sms.read();
+            if (!c) break;
+            text[i] = c;
+	}
+	text[i] = 0;
+	textline = 0;
+	saveText(text);
+	sms.flush(); // XXX: should save to read message store, not delete
+    }
+
+    if (name[0] == 0) phoneNumberToName(number, name, sizeof(name) / sizeof(name[0]));
+
+    screen.print(NAME_OR_NUMBER());
+    screen.print(": ");
+    screen.print(text);
+
+//        for (int i = textline * SCREEN_WIDTH; i < textline * SCREEN_WIDTH + 56; i++) {
+//          if (!text[i]) break;
+//          screen.print(text[i]);
+//        }
+
+    softKeys("close", "reply");
+
+    if (key == 'L') mode = interruptedmode;
+    if (key == 'R') {
+	text[0] = 0;
+	mode = EDITTEXT;
+	fromalert = true;
+    }
+//        if (key == 'U') {
+//          if (textline > 0) textline--;
+//        }
+//        if (key == 'D') {
+//          if (strlen(text) > (textline * SCREEN_WIDTH + 56)) textline++;
+//        }
+}
+
+void alarmAlertMode(boolean init) {
+    if (init) {
+	blank = false;
+	screen.setBrightness(brightness);
+	noteStartTime = 0;
+	ringToneIndex = sizeof(ringTone) / sizeof(ringTone[0]) - 1; // index of last note, so we'll continue to the first one
+    }
+
+    softKeys("okay");
+
+    screen.print("!! ");
+    drawTime();
+
+    if (millis() - noteStartTime > ringToneDurations[ringToneIndex]) {
+	ringToneIndex = (ringToneIndex + 1) % (sizeof(ringTone) / sizeof(ringTone[0]));
+	noteStartTime = millis();
+	if (ringTone[ringToneIndex] == 0) noTone(4);
+	else tone(4, ringTone[ringToneIndex]);
+    }
+
+    if (key == 'R') {
+	alarmSet = false;
+	mode = alarminterruptedmode;
+	back = true;
+    }
+}
+
+void lockedMode(boolean init){
+    if (init) {
+	unlocking = false;
+	blank = false;
+    }
+
+    if (unlocking) {
+	softKeys("Unlock");
+
+	drawSignalStrength();
+	drawDateTime();
+
+	if (key == 'L') { mode = HOME; unlocking = false; }
+	if (key == 'U') { brightness += 1; }
+	if (key == 'D') { brightness -= 1; }
+	if (key == 'U' || key == 'D') { brightness = constrain(brightness, 0, 15); screen.setBrightness(brightness); lastKeyPressTime = millis(); screen.setCursor(2); screen.write(128 + (constrain(brightness - 1,0,15) / 2)); screen.display(); delay(100); }
+	if (millis() - lastKeyPressTime > 4000) unlocking = false;
+	blank = false;
+    } else {
+	if (key) {
+            screen.setBrightness(brightness);
+            unlocking = true;
+            lastKeyPressTime = millis();
+	}
+
+	if (!blank) {
+            screen.setBrightness(0);
+            blank = true;
+	}
+    }
+}
+
+void homeMode(boolean init){
+    softKeys("lock", "menu");
+
+    drawSignalStrength();
+    drawTime();
+
+    if ((key >= '0' && key <= '9') || key == '#') {
+	lastKeyPressTime = millis();
+	number[0] = key; number[1] = 0;
+	mode = DIAL;
+    } else if (key == 'L') {
+	mode = LOCKED;
+    } else if (key == 'R') {
+	setMenu(mainmenu);
+	backmode = HOME;
+    } else if (key == 'D') {
+	mode = PHONEBOOK;
+    }
+}
+
+void dialMode(boolean init){
+    numberInput(key, number, sizeof(number));
+    softKeys("back", "call");
+
+    if (key == 'L') {
+	mode = HOME;
+    } else if (key == 'R') {
+	if (strlen(number) > 0) {
+            mode = HOME; // for after call ends
+            name[0] = 0;
+            vcs.voiceCall(number);
+            while (!vcs.ready());
+	}
+    }
+}
+
+void pbMode(boolean init){
+    if (init) {
+	if (mode == PHONEBOOK) pb.selectPhoneBook(PHONEBOOK_SIM);
+	if (mode == MISSEDCALLS) pb.selectPhoneBook(PHONEBOOK_MISSEDCALLS);
+	if (mode == RECEIVEDCALLS) pb.selectPhoneBook(PHONEBOOK_RECEIVEDCALLS);
+	if (mode == DIALEDCALLS) pb.selectPhoneBook(PHONEBOOK_DIALEDCALLS);
+	while (!pb.ready());
+	delay(300); // otherwise the module gives an error on pb.queryPhoneBook()
+	pb.queryPhoneBook();
+	while (!pb.ready());
+	phoneBookSize = pb.getPhoneBookSize();
+	phoneBookPage = 0;
+	phoneBookLine = 0;
+	phoneBookIndexStart = 1;
+	phoneBookIndexEnd = loadphoneBookNamesForwards(phoneBookIndexStart, NUMPHONEBOOKLINES);
+	lastKeyPressTime = millis();
+    }
+
+    for (int i = 0; i < NUMPHONEBOOKLINES; i++) {
+	if (strlen(phoneBookNames[i]) > 0) {
+            screen.print(phoneBookNames[i]);
+	} else if (strlen(phoneBookNumbers[i]) > 0) {
+            screen.print(phoneBookNumbers[i]);
+	} else if (phoneBookIndices[i] != 0) {
+            screen.print("Unknown");
+	}
+	if (phoneBookHasDateTime[i] && i == phoneBookLine) {
+            screen.print(" ");
+            screen.print(phoneBookDateTimes[i]);
+	}
+    }
+    softKeys("back", "okay");
+
+    if (key == 'L') mode = HOME;
+    else if (key == 'R') {
+	backmode = mode;
+	if (mode == PHONEBOOK) {
+	    setMenu(phoneBookEntryMenu);
+	} else {
+	    setMenu(callLogEntryMenu);
+	}
+    } else if (key == 'D') {
+	if (phoneBookPage * NUMPHONEBOOKLINES + phoneBookLine + 1 < pb.getPhoneBookUsed()) {
+            phoneBookLine++;
+            if (phoneBookLine == NUMPHONEBOOKLINES) {
+		phoneBookPage++;
+		phoneBookIndexStart = phoneBookIndexEnd;
+		phoneBookIndexEnd = loadphoneBookNamesForwards(phoneBookIndexStart, NUMPHONEBOOKLINES);
+		phoneBookLine = 0;
+            }
+            lastKeyPressTime = millis();
+	}
+    } else if (key == 'U') {
+	if (phoneBookLine > 0 || phoneBookPage > 0) {
+            phoneBookLine--;
+            if (phoneBookLine == -1) {
+		phoneBookPage--;
+		phoneBookIndexEnd = phoneBookIndexStart;
+		phoneBookIndexStart = loadphoneBookNamesBackwards(phoneBookIndexEnd, NUMPHONEBOOKLINES);
+		phoneBookLine = NUMPHONEBOOKLINES - 1;
+            }
+            lastKeyPressTime = millis();
+	}
+    }
+}
+
+void editEntryMode(boolean init) {
+    if (init) entryField = NAME;
+
+    if (entryField == NAME) textInput(key, entryName, sizeof(entryName));
+    if (entryField == NUMBER) numberInput(key, entryNumber, sizeof(entryNumber));
+
+    softKeys("cancel", "save");
+
+    if (entryField == NAME) {
+	if (key == 'D') entryField = NUMBER;
+    }
+
+    if (entryField == NUMBER) {
+	if (key == 'U') entryField = NAME;
+    }
+
+    if (key == 'L') {
+	mode = backmode;
+	back = true;
+    }
+    if (key == 'R') {
+	savePhoneBookEntry(entryIndex, entryName, entryNumber);
+	mode = PHONEBOOK;
+    }
+}
+
+void editTextMode(boolean init){
+    textInput(key, text, sizeof(text));
+    softKeys("cancel", "send");
+
+    if (key == 'L') {
+	mode = (fromalert ? HOME : PHONEBOOK);
+	back = true;
+    }
+    if (key == 'R') {
+	sendText(number, text);
+	mode = HOME;
+	back = true;
+    }
+}
+
+void menuMode(boolean init){
+    if (initmode) menuLine = 0;
+
+    screen.print(menu[menuLine].name);
+
+    softKeys("back", "okay");
+
+    if (key == 'U') {
+	if (menuLine > 0) menuLine--;
+    } else if (key == 'D') {
+	if (menuLine < menuLength - 1) menuLine++;
+    } else if (key == 'R') {
+	mode = menu[menuLine].mode;
+	if (menu[menuLine].f) menu[menuLine].f();
+    } else if (key == 'L') {
+	mode = backmode;
+	back = true;
+    }
+}
+
+void textsMode(boolean init) {
+    softKeys("back");
+    setMenu(textsmenu);
+}
+
+void setTimeMode(boolean init) {
+    if (init) {
+	setTimeValues[0] = clock.getMonth();
+	setTimeValues[1] = clock.getDay();
+	setTimeValues[2] = clock.getYear() / 10;
+	setTimeValues[3] = clock.getYear() % 10;
+	setTimeValues[4] = clock.getHour();
+	setTimeValues[5] = clock.getMinute() / 10;
+	setTimeValues[6] = clock.getMinute() % 10;
+	setTimeField = 0;
+    }
+
+    for (int i = (setTimeField < 4 ? 0 : 4); i < (setTimeField < 4 ? 4 : 7); i++) {
+	if (i == setTimeField && millis() % 500 < 250) {
+            screen.print(" ");
+            if (setTimeValues[i] >= 10) screen.print(" ");
+	} else screen.print(setTimeValues[i]);
+	screen.print(setTimeSeparators[i]);
+    }
+
+    if (setTimeField == 6) softKeys("cancel", "set");
+    else softKeys("cancel", "next");
+
+    if (key == 'L') mode = HOME;
+
+    if (key == 'U') {
+	setTimeValues[setTimeField]++;
+	if (setTimeValues[setTimeField] > setTimeMax[setTimeField]) setTimeValues[setTimeField] = setTimeMin[setTimeField];
+    }
+
+    if (key == 'D') {
+	setTimeValues[setTimeField]--;
+	if (setTimeValues[setTimeField] < setTimeMin[setTimeField]) setTimeValues[setTimeField] = setTimeMax[setTimeField];
+    }
+
+    if (key == 'R') {
+	setTimeField++;
+	if (setTimeField == 7) {
+            clock.setTime(setTimeValues[2] * 10 + setTimeValues[3], setTimeValues[0], setTimeValues[1],
+                          setTimeValues[4], setTimeValues[5] * 10 + setTimeValues[6], 0);
+            while (!clock.ready());
+            delay(300);
+            clock.checkTime();
+            while (!clock.ready());
+            lastClockCheckTime = millis();
+            mode = HOME;
+	}
+    }
+}
+
+void setAlarmMode(boolean init){
+    if (init) {
+	setTimeValues[4] = alarmTime.hour;
+	setTimeValues[5] = alarmTime.minute / 10;
+	setTimeValues[6] = alarmTime.minute % 10;
+	alarmSetTemp = alarmSet;
+	setTimeField = -1;
+    }
+
+    if (setTimeField == -1 && millis() % 500 < 250) {
+	screen.print("   ");
+    } else {
+	if (alarmSetTemp) screen.print("ON ");
+	else screen.print("OFF");
+    }
+
+    if (alarmSetTemp) {
+	for (int i = 4; i < 7; i++) {
+            if (i == setTimeField && millis() % 500 < 250) {
+		screen.print(" ");
+		if (setTimeValues[i] >= 10) screen.print(" ");
+            } else screen.print(setTimeValues[i]);
+            screen.print(setTimeSeparators[i]);
+	}
+    }
+
+    if ((setTimeField == -1 && alarmSetTemp == false) || setTimeField == 6) softKeys("cancel", "set");
+    else softKeys("cancel", "next");
+
+    if (key == 'L') mode = HOME;
+
+    if (key == 'U') {
+	if (setTimeField == -1) {
+            alarmSetTemp = !alarmSetTemp;
+	} else {
+            setTimeValues[setTimeField]++;
+            if (setTimeValues[setTimeField] > setTimeMax[setTimeField]) setTimeValues[setTimeField] = setTimeMin[setTimeField];
+	}
+    }
+
+    if (key == 'D') {
+	if (setTimeField == -1) {
+            alarmSetTemp = !alarmSetTemp;
+	} else {
+            setTimeValues[setTimeField]--;
+            if (setTimeValues[setTimeField] < setTimeMin[setTimeField]) setTimeValues[setTimeField] = setTimeMax[setTimeField];
+	}
+    }
+
+    if (key == 'R') {
+	if (setTimeField == -1) {
+            if (alarmSetTemp) setTimeField = 4;
+            else {
+		alarmSet = alarmSetTemp;
+		mode = HOME;
+            }
+	} else {
+            setTimeField++;
+            if (setTimeField == 7) {
+		alarmSet = alarmSetTemp;
+		alarmTime.hour = setTimeValues[4];
+		alarmTime.minute = setTimeValues[5] * 10 + setTimeValues[6];
+		mode = HOME;
+            }
+		}
+    }
+}
+
+void setSilentMode(boolean init) {
+    if (init) ringTemp = ring;
+
+    if (millis() % 500 < 250) {
+	if (ringTemp) screen.print("Audible");
+	else screen.print("Silent");
+    }
+
+    if (key == 'U' || key == 'D') ringTemp = !ringTemp;
+    if (key == 'L') mode = HOME;
+    if (key == 'R') {
+	ring = ringTemp;
+	mode = HOME;
+    }
+}
+
+void recentTextsMode(boolean init) {
+    if (key == 'L') mode = HOME;
+    screen.print(recenttexts);
+    screen.display();
+}
+
+void savedTextsMode(boolean init) {
+	if (key == 'L') mode = HOME;
+	screen.print("Saved");
+	screen.display();
+}
+
