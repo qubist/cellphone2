@@ -138,6 +138,8 @@ menuentry_t *menu;
 int menuLength;
 int menuLine;
 
+#define setMenu(m) mode = MENU; menu = m; menuLength = sizeof(m) / sizeof(menuentry_t);
+
 const int NUMPHONEBOOKLINES = 1;
 int phoneBookIndices[NUMPHONEBOOKLINES];
 char phoneBookNames[NUMPHONEBOOKLINES][ENTRY_SIZE];
@@ -506,9 +508,7 @@ void loop() {
         } else if (key == 'L') {
           mode = LOCKED;
         } else if (key == 'R') {
-          mode = MENU;
-          menu = mainmenu;
-          menuLength = sizeof(mainmenu) / sizeof(mainmenu[0]);
+          setMenu(mainmenu)
           backmode = HOME;
         } else if (key == 'D') {
           mode = PHONEBOOK;
@@ -564,13 +564,9 @@ void loop() {
         else if (key == 'R') {
           backmode = mode;
           if (mode == PHONEBOOK) {
-            mode = MENU;
-            menu = phoneBookEntryMenu;
-            menuLength = sizeof(phoneBookEntryMenu) / sizeof(phoneBookEntryMenu[0]);
+            setMenu(phoneBookEntryMenu)
           } else {
-            mode = MENU;
-            menu = callLogEntryMenu;
-            menuLength = sizeof(callLogEntryMenu) / sizeof(callLogEntryMenu[0]);
+            setMenu(callLogEntryMenu)
           }
         } else if (key == 'D') {
           if (phoneBookPage * NUMPHONEBOOKLINES + phoneBookLine + 1 < pb.getPhoneBookUsed()) {
