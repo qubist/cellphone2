@@ -104,7 +104,9 @@ class LedDisplay : public Print {
 	void loadDotRegister();
 			
     int version(void);							// return library version
-	  
+	  	  	
+	void draw(byte x, byte y, bool color);
+				  
   private:
   	// Character display setters:
 	void writeCharacter(char whatCharacter, byte whatPosition, uint8_t underlined = false);	// write a character to a buffer which will

@@ -33,13 +33,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "pitches.h"
 
 #define QUARTER  250
-#define HALF  (QUARTER*2)
-#define WHOLE (QUARTER*4)
+#define HALF  (QUARTER * 2)
+#define WHOLE (QUARTER * 4)
 
-int ringTone[] =          { 
-  NOTE_B3, NOTE_C5, NOTE_B4,    NOTE_D4, NOTE_A3, NOTE_B3, 0 };
-int ringToneDurations[] = { 
-  QUARTER, QUARTER, WHOLE+HALF, QUARTER, QUARTER, 2*WHOLE, 1000 };
+int ringTone[] =          { NOTE_B3, NOTE_C5, NOTE_B4,    NOTE_D4, NOTE_A3, NOTE_B3, 0 };
+int ringToneDurations[] = { QUARTER, QUARTER, WHOLE+HALF, QUARTER, QUARTER, 2*WHOLE, 1000 };
   
 //int ringTone[] =          { NOTE_E5, NOTE_D5, NOTE_F4, NOTE_G4, NOTE_C5, NOTE_B5, NOTE_D4, NOTE_E4, NOTE_B5, NOTE_A5, NOTE_C4, NOTE_E4, NOTE_A5, 0 };
 //int ringToneDurations[] = { 250,     250,     500,     500,     250,     250,     500,     500,     250,     250,     500,     500,     1000,    1000 };

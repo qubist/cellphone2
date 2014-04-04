@@ -253,6 +253,12 @@ void LedDisplay::writeCharacter(char whatCharacter, byte whatPosition, uint8_t u
   }
 }
 
+void LedDisplay::draw(byte x, byte y, bool color) {
+	byte b = 1<<y;
+	if(color) dotRegister[x] |= b;
+	else dotRegister[x] &= ~b;
+}
+
 
 // This method sends 8 bits to one of the control registers:
 void LedDisplay::loadControlRegister(int dataByte) {

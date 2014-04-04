@@ -52,16 +52,19 @@ void loadingDelay(unsigned long d,unsigned int p) {
 }
 
 
+int x,y;
+
 void setup(){
   Serial.begin(9600);
   screen.begin();
   screen.flip();
   screen.clear();
-
+  x = y = 0;
 }
 
 int brightness = 15;
 unsigned long lastKeyPressTime;
+
 
 int i = 128;  
 void loop(){
@@ -73,12 +76,19 @@ void loop(){
     }
 	
 	
-    if (key == 'U') { brightness += 1; } 
-    if (key == 'D') { brightness -= 1; }
-    if (key == 'U' || key == 'D') { brightness = constrain(brightness, 0, 15); screen.setBrightness(brightness); lastKeyPressTime = millis(); screen.setCursor(0); screen.write(128 + (constrain(brightness - 1,0,15) / 2)); screen.print(brightness); screen.display(); delay(100); }
+//    if (key == 'U') { brightness += 1; } 
+//    if (key == 'D') { brightness -= 1; }
+//    if (key == 'U' || key == 'D') { brightness = constrain(brightness, 0, 15); screen.setBrightness(brightness); lastKeyPressTime = millis(); screen.setCursor(0); screen.write(128 + (constrain(brightness - 1,0,15) / 2)); screen.print(brightness); screen.display(); delay(100); }
 
-    screen.print(" TEST!");
-    screen.display();
+    if (key == 'D') { screen.draw(x,y,false); y++; if (y>6) y = 0; } 
+    if (key == 'U') { screen.draw(x,y,false); y--; if (y<0) y = 6; } 
+
+    if (key == 'R') { screen.draw(x,y,false); x++; if (x>5*8-1) x = 0; } 
+    if (key == 'L') { screen.draw(x,y,false); x--; if (x<0) x = 5*8-1; } 
+
+	screen.draw(x,y,true);
+//    screen.print(" TEST!");
+    screen.loadDotRegister();
 
 	
 // 	loading();
