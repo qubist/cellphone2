@@ -94,7 +94,7 @@ DateTime missedDateTime;
 
 GSM3_voiceCall_st prevVoiceCallStatus;
 
-enum Mode { NOMODE, TEXTALERT, MISSEDCALLALERT, ALARMALERT, LOCKED, HOME, DIAL, PHONEBOOK, EDITENTRY, EDITTEXT, MENU, MISSEDCALLS, RECEIVEDCALLS, DIALEDCALLS, TEXTS, SETTIME, SETALARM, SETSILENT, RECENTTEXTS, SAVEDTEXTS };
+enum Mode { NOMODE, TEXTALERT, MISSEDCALLALERT, ALARMALERT, LOCKED, HOME, DIAL, PHONEBOOK, EDITENTRY, EDITTEXT, MENU, MISSEDCALLS, RECEIVEDCALLS, DIALEDCALLS, TEXTS, CALLS, SETTIME, SETALARM, SETSILENT, RECENTTEXTS, SAVEDTEXTS };
 Mode mode = LOCKED, prevmode, backmode = mode, interruptedmode = mode, alarminterruptedmode = mode;
 boolean initmode, back, fromalert;
 
@@ -106,9 +106,7 @@ struct menuentry_t {
 
 menuentry_t mainmenu[] = {
   { "Ring mode", SETSILENT, 0 },
-  { "Missed calls", MISSEDCALLS, 0 },
-  { "Received calls", RECEIVEDCALLS, 0 },
-  { "Dialed calls", DIALEDCALLS, 0 },
+  { "Calls", CALLS, 0 },
   { "Texts", TEXTS, 0 },
   { "Set date+time", SETTIME, 0 },
   { "Set alarm", SETALARM, 0 },
@@ -132,6 +130,13 @@ menuentry_t textsmenu[] = {
   { "Recent texts", RECENTTEXTS, 0 },
   { "Saved texts", SAVEDTEXTS, 0 },
 };
+
+menuentry_t callsmenu[] = {
+    { "Missed calls", MISSEDCALLS, 0 },
+    { "Received calls", RECEIVEDCALLS, 0 },
+    { "Dialed calls", DIALEDCALLS, 0 },
+};
+
 
 menuentry_t *menu;
 
@@ -656,6 +661,11 @@ void loop() {
 		
         setMenu(textsmenu);
 //        if (key == 'L') mode = HOME;
+	  } else if (mode == CALLS) {
+		softKeys("back");
+	
+      	setMenu(callsmenu);
+
       } else if (mode == RECENTTEXTS) {
         if (key == 'L') mode = HOME;
 		screen.print(recenttexts);
