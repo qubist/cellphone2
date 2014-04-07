@@ -216,9 +216,14 @@ boolean alarmSetTemp, alarmSet = false;
 DateTime alarmTime; // note: date isn't used.
 
 unsigned long lastScrollTime = 0;
-const long scrollSpeed = 200;
+const long scrollSpeedReg = 200;
+const long scrollSpeedMed = 300;
+const long scrollSpeedLow = 600;
+const long scrollSpeedOff = 0;
 
-boolean unlocking, blank, scrolling, terminateScreen;
+boolean unlocking, blank, terminateScreen;
+
+unsigned long scrolling;
 
 const char *loadingStr="-\\|/";
 const unsigned long loadingAdvance = 100;
@@ -304,7 +309,7 @@ void loop() {
 //  if (vcs.getvoiceCallStatus() == IDLE_CALL && mode == LOCKED) screen.setBrightness(0);
 //  else screen.setBrightness(brightness);
 
-  scrolling = true;
+  scrolling = scrollSpeedReg;
   
   if (vcs.getvoiceCallStatus() != RECEIVINGCALL && (vcs.getvoiceCallStatus() != IDLE_CALL || mode != ALARMALERT)) noTone(4);
   
@@ -871,7 +876,7 @@ void loop() {
       break;
   }
   
-  if (scrolling && millis() - lastScrollTime > scrollSpeed) {
+  if (scrolling && millis() - lastScrollTime > scrolling) {
     screen.scroll();
     lastScrollTime = millis();
   }
@@ -1131,7 +1136,7 @@ int loadphoneBookNamesBackwards(int endingIndex, int n)
 
 void numberInput(char key, char *buf, int len)
 {
-  scrolling = false;
+  scrolling = scrollSpeedOff;
   screen.showCursor();
   
   int i = strlen(buf);
@@ -1144,7 +1149,7 @@ void numberInput(char key, char *buf, int len)
   } else if (millis() - lastKeyPressTime < 5000) {
     screen.print((strlen(buf) < 7) ? buf : (buf + strlen(buf) - 7));
   } else {
-    scrolling = true;
+    scrolling = scrollSpeedLow;
     screen.print(buf);
   }
   
@@ -1171,11 +1176,11 @@ void numberInput(char key, char *buf, int len)
 
 void textInput(char key, char *buf, int len)
 {
-  scrolling = false;
+  scrolling = scrollSpeedOff;
   screen.showCursor();
   
   if (millis() - lastKeyPressTime > 5000) {
-    scrolling = true;
+    scrolling = scrollSpeedLow;
     screen.print(buf);
   } else if (millis() - lastKeyPressTime > 1000) {
     screen.print((strlen(buf) < 7) ? buf : (buf + strlen(buf) - 7));
