@@ -222,8 +222,7 @@ DateTime alarmTime; // note: date isn't used.
 
 unsigned long lastScrollTime = 0;
 const long scrollSpeedReg = 200;
-const long scrollSpeedMed = 300;
-const long scrollSpeedLow = 600;
+const long scrollSpeedLow = 400;
 const long scrollSpeedOff = 0;
 
 boolean unlocking, blank, terminateScreen;
