@@ -792,8 +792,14 @@ void loop() {
         if (initmode) ringTemp = ring;
         
         if (millis() % 500 < 250) {
-          if (ringTemp) screen.print("Audible");
-          else screen.print("Silent");
+          if (ringTemp) {
+			  screen.write(18);
+			  screen.print("Audible");
+		  }
+          else {
+			  screen.write(17);
+			  screen.print("Silent");
+		  }
         }
         
         if (key == 'U' || key == 'D') ringTemp = !ringTemp;
