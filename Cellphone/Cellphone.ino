@@ -43,6 +43,7 @@ int ringToneDurations[] = { QUARTER, QUARTER, WHOLE+HALF, QUARTER, QUARTER, 2*WH
 //int ringToneDurations[] = { 250,     250,     500,     500,     250,     250,     500,     500,     250,     250,     500,     500,     1000,    1000 };
 int ringToneIndex;
 
+boolean s12hr = true, s12hrTime;
 boolean ring = true, ringTemp;
 
 GSM gsmAccess(true);
@@ -94,7 +95,7 @@ DateTime missedDateTime;
 
 GSM3_voiceCall_st prevVoiceCallStatus;
 
-enum Mode { NOMODE, TEXTALERT, MISSEDCALLALERT, ALARMALERT, LOCKED, HOME, DIAL, PHONEBOOK, EDITENTRY, EDITTEXT, MENU, MISSEDCALLS, RECEIVEDCALLS, DIALEDCALLS, TEXTS, CALLS, SETTIME, SETALARM, SETSILENT, RECENTTEXTS, SAVEDTEXTS };
+enum Mode { NOMODE, TEXTALERT, MISSEDCALLALERT, ALARMALERT, LOCKED, HOME, DIAL, PHONEBOOK, EDITENTRY, EDITTEXT, MENU, MISSEDCALLS, RECEIVEDCALLS, DIALEDCALLS, TEXTS, CALLS, SETTINGS, SETHRTIME, SETTIME, SETALARM, SETSILENT, RECENTTEXTS, SAVEDTEXTS };
 Mode mode = LOCKED, prevmode, backmode = mode, interruptedmode = mode, alarminterruptedmode = mode;
 boolean initmode, back, fromalert;
 
@@ -108,8 +109,7 @@ menuentry_t mainmenu[] = {
   { "Ring mode", SETSILENT, 0 },
   { "Calls", CALLS, 0 },
   { "Texts", TEXTS, 0 },
-  { "Set date+time", SETTIME, 0 },
-  { "Set alarm", SETALARM, 0 },
+  { "Settings", SETTINGS, 0 },
 };
 
 menuentry_t phoneBookEntryMenu[] = {
@@ -137,6 +137,11 @@ menuentry_t callsmenu[] = {
     { "Dialed calls", DIALEDCALLS, 0 },
 };
 
+menuentry_t settingsmenu[] = {
+    { "Set alarm", SETALARM, 0 },
+    { "Set date+time", SETTIME, 0 },
+	{ "12/24 hr time", SETHRTIME, 0},
+};
 
 menuentry_t *menu;
 
@@ -381,11 +386,16 @@ void loop() {
       if (mode == ALARMALERT) screen.print("!! ");
       
       if (mode == HOME || (mode == LOCKED && unlocking) || mode == ALARMALERT) {
-        if (clock.getHour() < 10) screen.print(" ");
-        screen.print(clock.getHour());
+		uint8_t hour = clock.getHour();
+		uint8_t minute = clock.getMinute();
+		if(s12hrTime) {
+			if(hour > 12) hour -= 12;
+		}
+        if (hour < 10) screen.print(" ");
+        screen.print(hour);
         screen.print(":");
-        if (clock.getMinute() < 10) screen.print('0');
-        screen.print(clock.getMinute());
+        if (minute < 10) screen.print('0');
+        screen.print(minute);
       }
       
       if (mode == LOCKED && unlocking) {
@@ -659,12 +669,14 @@ void loop() {
 		softKeys("back");
 		
         setMenu(textsmenu);
-//        if (key == 'L') mode = HOME;
 	  } else if (mode == CALLS) {
 		softKeys("back");
-	
-      	setMenu(callsmenu);
 
+      	setMenu(callsmenu);
+	  } else if (mode == SETTINGS) {
+		softKeys("back");
+
+    	setMenu(settingsmenu);
       } else if (mode == RECENTTEXTS) {
         if (key == 'L') mode = HOME;
 		screen.print(recenttexts);
@@ -809,7 +821,26 @@ void loop() {
           mode = HOME;
         }
       }
-      break;
+	  else if (mode == SETHRTIME) {
+		  if (initmode) s12hrTime = 0;
+        
+		  if (millis() % 500 < 250) {
+			  if (s12hrTime) {
+				  screen.print("12 hr");
+			  }
+			  else {
+				  screen.print("24 hr");
+			  }
+		  }
+        
+		  if (key == 'U' || key == 'D') s12hrTime = !s12hrTime;
+		  if (key == 'L') mode = HOME;
+		  if (key == 'R') {
+			  s12hr = s12hrTime;
+			  mode = HOME;
+		  }
+	  }
+	  break;
       
     case CALLING:
       //if (name[0] == 0) phoneNumberToName(number, name, sizeof(name) / sizeof(name[0]));
