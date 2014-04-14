@@ -923,7 +923,9 @@ void loop() {
   }
   
   if (scrolling && millis() - lastScrollTime > scrolling) {
-    screen.scroll();
+    if(!(key == 'U' && keypad.getState() == HOLD)) {
+      screen.scroll();
+       }
     lastScrollTime = millis();
   }
   
