@@ -1251,7 +1251,7 @@ void textInput(char key, char *buf, int len)
         letters = lowercase;
         for (int j = i - 1; j >= 0; j--) {
           if (buf[j] == '.' || buf[j] == '?' || buf[j] == '!') {
-            letters = uppercase;
+            if(!(buf[j] == '.' && key == '.')) letters = uppercase;
             break;
           } else if (buf[j] != ' ') break;
         }
