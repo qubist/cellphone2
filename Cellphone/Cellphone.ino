@@ -43,8 +43,9 @@ int ringToneDurations[] = { QUARTER, QUARTER, WHOLE+HALF, QUARTER, QUARTER, 2*WH
 //int ringToneDurations[] = { 250,     250,     500,     500,     250,     250,     500,     500,     250,     250,     500,     500,     1000,    1000 };
 int ringToneIndex;
 
-boolean s12hr = true, s12hrTime;
-boolean ring = true, ringTemp;
+boolean s12hr = false;
+boolean ring = true;
+boolean settingTemp;
 
 GSM gsmAccess(true);
 GSMVoiceCall vcs(false);
@@ -258,6 +259,34 @@ void loadingDelay(unsigned long d,unsigned int p) {
   }
 }
 
+char key;
+
+void menuItemToggle(boolean *setting, char *Op1, char *Op2, char icontrue = 0, char iconfalse = 0) {
+  
+  if (millis() % 500 < 250) {
+	  if (settingTemp) {
+		  if(icontrue != 0) {
+			  screen.write(icontrue);
+		  }
+		  screen.print(Op1);
+	  }
+	  else {
+		  if(iconfalse != 0) {
+			  screen.write(iconfalse);
+		  }
+		  screen.print(Op2);
+	  }
+  }
+  
+  if (key == 'U' || key == 'D') settingTemp = !settingTemp;
+  if (key == 'L') mode = HOME;
+  if (key == 'R') {
+	  *setting = settingTemp;
+	  mode = HOME;
+  }
+	
+}
+
 void setup() {
   Serial.begin(9600);
 
@@ -322,7 +351,7 @@ void loop() {
   
   if (vcs.getvoiceCallStatus() != RECEIVINGCALL && (vcs.getvoiceCallStatus() != IDLE_CALL || mode != ALARMALERT)) noTone(4);
   
-  char key = keypad.getKey();
+  key = keypad.getKey();
   //screen.clear();
   screen.setCursor(0);
   screen.hideCursor();
@@ -388,7 +417,7 @@ void loop() {
       if (mode == HOME || (mode == LOCKED && unlocking) || mode == ALARMALERT) {
 		uint8_t hour = clock.getHour();
 		uint8_t minute = clock.getMinute();
-		if(s12hrTime) {
+		if(s12hr) {
 			if(hour > 12) hour -= 12;
 		}
         if (hour < 10) screen.print(" ");
@@ -801,7 +830,10 @@ void loop() {
           }
         }
       } else if (mode == SETSILENT) {
-        if (initmode) ringTemp = ring;
+		  if (initmode) settingTemp = ring;
+		  menuItemToggle(&ring, "Audible", "Silent", 18, 17);
+		  
+        /*if (initmode) ringTemp = ring;
         
         if (millis() % 500 < 250) {
           if (ringTemp) {
@@ -819,13 +851,16 @@ void loop() {
         if (key == 'R') {
           ring = ringTemp;
           mode = HOME;
-        }
+        }*/
       }
 	  else if (mode == SETHRTIME) {
-		  if (initmode) s12hrTime = 0;
+		  if (initmode) settingTemp = s12hr;	  
+		  menuItemToggle(&s12hr, "12 hr", "24 hr");
+		  
+		  /*if (initmode) s12hrTemp = s12hr;
         
 		  if (millis() % 500 < 250) {
-			  if (s12hrTime) {
+			  if (s12hrTemp) {
 				  screen.print("12 hr");
 			  }
 			  else {
@@ -833,12 +868,12 @@ void loop() {
 			  }
 		  }
         
-		  if (key == 'U' || key == 'D') s12hrTime = !s12hrTime;
+		  if (key == 'U' || key == 'D') s12hrTemp = !s12hrTemp;
 		  if (key == 'L') mode = HOME;
 		  if (key == 'R') {
-			  s12hr = s12hrTime;
+			  s12hr = s12hrTemp;
 			  mode = HOME;
-		  }
+		  }*/
 	  }
 	  break;
       
