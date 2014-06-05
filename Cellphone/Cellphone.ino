@@ -41,6 +41,11 @@ int ringToneDurations[] = { QUARTER, QUARTER, WHOLE+HALF, QUARTER, QUARTER, 2*WH
   
 //int ringTone[] =          { NOTE_E5, NOTE_D5, NOTE_F4, NOTE_G4, NOTE_C5, NOTE_B5, NOTE_D4, NOTE_E4, NOTE_B5, NOTE_A5, NOTE_C4, NOTE_E4, NOTE_A5, 0 };
 //int ringToneDurations[] = { 250,     250,     500,     500,     250,     250,     500,     500,     250,     250,     500,     500,     1000,    1000 };
+
+//The Nitrogen Ringtone:
+int ringTone[] =          { NOTE_D4, NOTE_FS4, NOTE_A4, NOTE_E4, NOTE_G4, NOTE_B4, NOTE_D4, NOTE_FS4, NOTE_A4, NOTE_CS4, NOTE_E4, NOTE_G4, NOTE_D4, NOTE_FS4, NOTE_A4, NOTE_G4, NOTE_B4, NOTE_D5, NOTE_E4, NOTE_G4, NOTE_B4, NOTE_CS4, NOTE_E4, NOTE_G4,};
+int ringToneDurations[] = { SIX,     SIX,      EIGHT,   SIX,     SIX,     SIX,     EIGHT,   SIX,      SIX,     EIGHT,    SIX,     EIGHT,   SIX,     SIX,      EIGHT,   SIX,     SIX,     SIX,     EIGHT,   SIX,     SIX,     EIGHT,   SIX,     EIGHT,};
+
 //Alarming Alarm
 //int ringTone[] =          { NOTE_C3, NOTE_DS3, NOTE_C3, NOTE_DS3, NOTE_C3, NOTE_DS3, NOTE_C3, NOTE_DS3, NOTE_C3, NOTE_DS3, NOTE_C3, NOTE_DS3, NOTE_C3, NOTE_DS3, NOTE_C3, NOTE_DS3, NOTE_C3, NOTE_DS3, NOTE_C3, NOTE_DS3, NOTE_C3, NOTE_DS3, NOTE_C3, NOTE_DS3,};
 //int ringToneDurations[] = { 10,     10,      10,   10,     10,     10,     10,   10,      10,     10,    10,     10,   10,     10,      10,   10,     10,     10,     10,   10,     10,     10,   10,     10,};
