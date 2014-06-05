@@ -32,9 +32,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "pitches.h"
 
-#define QUARTER  250
-#define HALF  (QUARTER * 2)
-#define WHOLE (QUARTER * 4)
+#define QUART  1000
+#define EIGHT (QUART / 2)
+#define SIX   (QUART / 4)
+#define HALF  (QUART * 2)
+#define WHOLE (QUART * 4)
 
 //Doctor Who Theme:
 //int ringTone[] =          { NOTE_B1, NOTE_C4, NOTE_B3,    NOTE_D4, NOTE_A3, NOTE_B3, 0 };
