@@ -38,6 +38,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define HALF  (QUART * 2)
 #define WHOLE (QUART * 4)
 
+#define PIANO_MODE
+
 //Doctor Who Theme:
 //int ringTone[] =          { NOTE_B1, NOTE_C4, NOTE_B3,    NOTE_D4, NOTE_A3, NOTE_B3, 0 };
 //int ringToneDurations[] = { QUART,   QUART,   WHOLE+HALF, QUART,   QUART,   2*WHOLE, 1000 };
@@ -60,6 +62,14 @@ int ringToneIndex;
 boolean s12hr = false;
 boolean ring = true;
 boolean settingTemp;
+
+//for PIANO mode
+int octave;
+int octmultiplier;
+float lasttone;
+int currentoct;
+boolean playtone;
+char *currentnotetext = "         ";
 
 GSM gsmAccess(true);
 GSMVoiceCall vcs(false);
@@ -110,7 +120,11 @@ DateTime missedDateTime;
 
 GSM3_voiceCall_st prevVoiceCallStatus;
 
-enum Mode { NOMODE, TEXTALERT, MISSEDCALLALERT, ALARMALERT, LOCKED, HOME, DIAL, PHONEBOOK, EDITENTRY, EDITTEXT, MENU, MISSEDCALLS, RECEIVEDCALLS, DIALEDCALLS, TEXTS, CALLS, SETTINGS, SETHRTIME, SETTIME, SETALARM, SETSILENT, RECENTTEXTS, SAVEDTEXTS };
+enum Mode { NOMODE, TEXTALERT, MISSEDCALLALERT, ALARMALERT, LOCKED, HOME, DIAL, PHONEBOOK, EDITENTRY, EDITTEXT, MENU, MISSEDCALLS, RECEIVEDCALLS, DIALEDCALLS, TEXTS, CALLS, SETTINGS, SETHRTIME, SETTIME, SETALARM, SETSILENT, RECENTTEXTS, SAVEDTEXTS
+#ifdef PIANO_MODE
+	, PIANO
+#endif 
+};
 Mode mode = LOCKED, prevmode, backmode = mode, interruptedmode = mode, alarminterruptedmode = mode;
 boolean initmode, back, fromalert;
 
@@ -125,6 +139,9 @@ menuentry_t mainmenu[] = {
   { "Calls", CALLS, 0 },
   { "Texts", TEXTS, 0 },
   { "Settings", SETTINGS, 0 },
+#ifdef PIANO_MODE
+  { "Piano", PIANO, 0 },
+#endif
 };
 
 menuentry_t phoneBookEntryMenu[] = {
@@ -363,7 +380,11 @@ void loop() {
 
   scrolling = scrollSpeedReg;
   
-  if (vcs.getvoiceCallStatus() != RECEIVINGCALL && (vcs.getvoiceCallStatus() != IDLE_CALL || mode != ALARMALERT)) noTone(4);
+  if (vcs.getvoiceCallStatus() != RECEIVINGCALL && (vcs.getvoiceCallStatus() != IDLE_CALL || mode != ALARMALERT)
+#ifdef PIANO_MODE
+	   && mode != PIANO
+#endif
+	) noTone(4);
   
   key = keypad.getKey();
   //screen.clear();
@@ -889,6 +910,125 @@ void loop() {
 			  mode = HOME;
 		  }*/
 	  }
+#ifdef PIANO_MODE
+	  else if (mode == PIANO) {
+		  if (initmode) {
+			octave = 5;
+			octmultiplier = 1 << octave;
+			currentoct = 5;
+			playtone = true;
+		    screen.clear();
+		    screen.print("       ");
+		  }
+
+		screen.setCursor(0);
+        
+		Serial.println("looping");
+				        
+	  	if (key){
+	  		Serial.println(key);
+			
+	  		switch (key) {
+	  		case '*':
+	  			lasttone = 16.35;//NOTE_CX
+	            currentnotetext = "C      ";
+	            currentoct = octave;
+	  			break;
+	  		case '7':
+	  			lasttone = 17.32; //NOTE_CSX
+	            currentnotetext = "CS     ";
+	            currentoct = octave;
+	  			break;
+	  		case '4':
+	  			lasttone = 18.35; //NOTE_DX
+	            currentnotetext = "D      ";
+	            currentoct = octave;
+	  			break;
+	  		case '1':
+	  			lasttone = 19.45; //NOTE_DSX
+	            currentnotetext = "DS     ";
+	            currentoct = octave;
+	  			break;
+	  		case '0':
+	  			lasttone = 20.60; //NOTE_EX
+	            currentnotetext = "E      ";
+	            currentoct = octave;
+	  			break;
+	  		case '8':
+	  			lasttone = 21.83; //NOTE_FX
+	            currentnotetext = "F      ";
+	            currentoct = octave;
+	  			break;
+	  		case '5':
+	  			lasttone = 23.12; //NOTE_FSX
+	            currentnotetext = "FS     ";
+	            currentoct = octave;
+	  			break;
+	  		case '2':
+	  			lasttone = 24.50; //NOTE_GX
+	            currentnotetext = "G      ";
+	            currentoct = octave;
+	  			break;	
+	  		case '#':
+	  			lasttone = 25.96; //NOTE_GSX
+	            currentnotetext = "GS     ";
+	            currentoct = octave;
+	  			break;	
+	  		case '9':	
+	  			lasttone = 27.50; //NOTE_AX
+	            currentnotetext = "A      ";
+	            currentoct = octave;
+	  			break;		
+	  		case '6':
+	  			lasttone = 29.14; //NOTE_ASX
+	            currentnotetext = "AS     ";
+	            currentoct = octave;
+	  			break;		
+	  		case '3':	
+	  			lasttone = 30.87; //NOTE_BX
+	            currentnotetext = "B      ";
+	            currentoct = octave;
+	  			break;		
+	  		case 'R':		
+	  			lasttone = 32.70; //NOTE_CX+1		
+	            currentnotetext = "C      ";
+	            currentoct = octave + 1;
+	  			break;
+	  		case 'U':
+	  			octave++;
+	            if (octave > 8) octave = 8;
+	  			octmultiplier = 1 << octave;
+	            currentoct = octave;                        
+	            break;
+	  		case 'D':
+	  			octave--;
+	            if (octave < 0) octave = 0;
+	  			octmultiplier = 1 << octave;
+	            currentoct = octave;
+	  			break;
+	        case 'L':
+		   		noTone(4);		   
+	            playtone = false;
+	  		  	mode = HOME;
+	            break;
+	  			}
+                
+	        Serial.print("octmultiplier: ");
+	        Serial.println(octmultiplier);
+	        Serial.print("octave: ");
+	        Serial.println(octave);
+	        Serial.print("currentoct: ");
+	        Serial.println(currentoct);     
+               
+			if(playtone == true){
+				tone(4, lasttone * octmultiplier);
+			}
+		}
+		screen.print(currentnotetext);
+        screen.print(currentoct);
+					
+	  }
+#endif
 	  break;
       
     case CALLING:
